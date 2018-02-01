@@ -24,6 +24,7 @@ def mkfreesurferdir(subid):
 def mkphase2dir(subid, scan):
     """
     Make soft link of subid in phase2 from studyforrest/rawdata/ to studyforrest/.
+    This function prepare the dir info based on `subid` and `scan`, make dir is doing by softlinkphase2().
 
     Examples
     --------
@@ -31,6 +32,7 @@ def mkphase2dir(subid, scan):
         softlink: '/nfs/s1/studyforrest/rawdata/phase2/sub-01/ses-movie/func/files'
                     >>> '/nfs/s1/studyforrest/sub001/audiovisual3T/runid/files'
     """
+    # different dst scan has different tasks, specify them by scanlist.
     scanlist['audiovisual3T'] = ['movie']
     scanlist['retinotopy3T'] = ['retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']
     scanlist['localizer3T'] = ['movielocalizer', 'objectcategories']
@@ -44,25 +46,23 @@ def mkphase2dir(subid, scan):
     rawsubid = mksubid('sub-', subid)
     newsubid = mksubid('sub0', subid)
     tasks = scanlist[scan]
+
+    # specify the src scan by dst scan
     if scan == 'audiovisual3T':
         rawscan = 'ses-movie'
     else:
         rawscan = 'ses-localizer'
+
+    # doing soft link
     softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks)
 
 
 def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
     """
-    Make soft link of subid in phase2 from studyforrest/rawdata/ to studyforrest/.
-
-    Examples
-    --------
-        >>mkphase2dir('sub001, ')
-        softlink: '/nfs/s1/studyforrest/rawdata/phase2/sub-01/ses-movie/func/files'
-                    >>> '/nfs/s1/studyforrest/sub001/audiovisual3T/runid/files'
+    Make soft link of every chosen file in phase2 from studyforrest/rawdata/ to studyforrest/.
     """
     for task in tasks:
-        rawmodalitys, newfilenames = split_task(task)
+        rawmodalitys, newfilenames = split_task(task)  # split task to get more info.
 
         if not rawmodalitys or not newfilenames:
             raise ValueError("Please check input task name.")
@@ -71,7 +71,9 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
         dstdir = os.path.join(newrootdir, newsubid, scan)
 
         for rawmodality, newfilename in zip(rawmodalitys, newfilenames):
-            """Find runid from files."""
+            """soft link each rawmodality file into newfilename."""
+
+            # Get runid from files.
             files = os.listdir(srcdir)
             rawrunids = re.search('_run-[0-9]_{0}'.format(rawmodality), files).group()
             rawrunidlist = re.search('[0-9]', rawrunids).group()
@@ -82,7 +84,7 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
                 src = os.path.join(srcdir, rawfilename)
                 dst = os.path.join(dstdir, newrunid, newfilename)
                 os.symlink(src, dst)
-        
+
 
 def mksubid(prefix, subid, idlength=2):
     """
@@ -105,6 +107,16 @@ def mksubid(prefix, subid, idlength=2):
 
 
 def mkrunid(runid, idlength=3):
+    """
+    Build new format of runid by given idlength.
+
+    Examples
+    --------
+        >>>mkrunid(1)
+            001
+        >>>mkrunid('5', idlength=2)
+            05
+    """
     runid_str = str(runid)
     while len(runid_str) < idlength:
         runid_str = '0' + runid_str
@@ -112,6 +124,10 @@ def mkrunid(runid, idlength=3):
 
 
 def split_task(task):
+    """
+    Get raw modalitys and the corresponding newfilename by the raw task.
+    If task is not specified, return None.
+    """
     rawmodalitys = None
     newfilenames = None
 
