@@ -27,8 +27,9 @@ def mkphase2dir(subid, scan):
 
     Examples
     --------
-        >>softlinkdir('sub001, ')
-        softlink: '/nfs/s1/studyforrest/rawdata/freesurfer/sub-01/' >>> '/nfs/s1/studyforrest/anat/sub001'
+        >>mkphase2dir('sub001, ')
+        softlink: '/nfs/s1/studyforrest/rawdata/phase2/sub-01/ses-movie/func/files'
+                    >>> '/nfs/s1/studyforrest/sub001/audiovisual3T/runid/files'
     """
     scanlist['audiovisual3T'] = ['movie']
     scanlist['retinotopy3T'] = ['retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']
@@ -51,10 +52,19 @@ def mkphase2dir(subid, scan):
 
 
 def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
+    """
+    Make soft link of subid in phase2 from studyforrest/rawdata/ to studyforrest/.
+
+    Examples
+    --------
+        >>mkphase2dir('sub001, ')
+        softlink: '/nfs/s1/studyforrest/rawdata/phase2/sub-01/ses-movie/func/files'
+                    >>> '/nfs/s1/studyforrest/sub001/audiovisual3T/runid/files'
+    """
     for task in tasks:
         rawmodalitys = None
         newfilenames = None
-        
+
         if task == 'movie':
             rawmodalitys = ['bold.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'recording-eyegaze_physio.tsv.gz']
             newfilenames = ['raw.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'eyegaze_physio.tsv.gz']
@@ -77,6 +87,8 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
         srcdir = os.path.join(rawrootdir, 'phase2', rawsubid, rawscan, 'func')
         dstdir = os.path.join(newrootdir, newsubid, scan)
 
+        # TODO get runid
+        
         for rawmodality, newfilename in zip(rawmodalitys, newfilenames):
             rawfilename = rawsubid + '_' + rawscan + '_task-' + task + '_run-' + runid + '_' + rawmodality
             src = os.path.join(srcdir, rawfilename)
