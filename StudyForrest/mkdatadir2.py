@@ -7,6 +7,11 @@ def mkfreesurferdir(subid):
     """
     Make soft link of subs from studyforrest/rawdata/freesurfer to studyforrest/anat.
 
+    Parameters
+    ----------
+        subid: the id of subjects that want to build dir for, determined by subid in rawdata/freesurfer/
+                or studyforrest/subid, sub001 or sub-01 is acceptable.
+
     Examples
     --------
         >>softlinkdir('sub001')
@@ -25,6 +30,13 @@ def mkphase2dir(subid, scan):
     """
     Make soft link of subid in phase2 from studyforrest/rawdata/ to studyforrest/.
     This function prepare the dir info based on `subid` and `scan`, make dir is doing by softlinkphase2().
+
+    Parameters
+    ----------
+        subid: the id of subjects that want to build dir for, determined by subid in rawdata/freesurfer/
+                or studyforrest/subid, sub001 or sub-01 is acceptable.
+        scan: the name behind studyforrest/subid/, for phase2 data, scan name should be one of
+                ['audiovisual3T', retinotopy3T', 'localizer3T'].
 
     Examples
     --------
@@ -60,6 +72,16 @@ def mkphase2dir(subid, scan):
 def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
     """
     Make soft link of every chosen file in phase2 from studyforrest/rawdata/ to studyforrest/.
+
+    Parameters
+    ----------
+        rawrootdir: the rawdata dir path, also the parent dir of phase2.
+        newrootdir: the newdata dir path, also the parent dir of newsubid.
+        rawsubid: subid in raw data.
+        newsubid: subid in newrootdir.
+        rawscan: 'ses-movie' or 'ses-localizer' in raw data.
+        scan: new scan name.
+        tasks: the task list that could specify files under scan.
     """
     for task in tasks:
         rawmodalitys, newfilenames = split_task(task)  # split task to get more info.
@@ -90,6 +112,12 @@ def mksubid(prefix, subid, idlength=2):
     """
     Use 'prefix' and the last two number of 'subid' to make new subid.
 
+    Parameters
+    ----------
+        prefix: prefix before new format of subid.
+        subid: id number.
+        idlength: determine the length of id number.
+
     Examples
     --------
         >>mkrawsubid('sub0', 'sub-01')
@@ -110,6 +138,11 @@ def mkrunid(runid, idlength=3):
     """
     Build new format of runid by given idlength.
 
+    Parameters
+    ----------
+        runid: id number.
+        idlength: determine the length of id number.
+
     Examples
     --------
         >>>mkrunid(1)
@@ -127,6 +160,16 @@ def split_task(task):
     """
     Get raw modalitys and the corresponding newfilename by the raw task.
     If task is not specified, return None.
+
+    Parameters
+    ----------
+        task: task name of raw data, should be one of
+                ['movie', 'objectcategories', 'retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']
+
+    Return
+    ------
+        rawmodalitys: unified post part of raw data filename.
+        newfilenames: new filename of dst file.
     """
     rawmodalitys = None
     newfilenames = None
