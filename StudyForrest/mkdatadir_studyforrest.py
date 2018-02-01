@@ -66,10 +66,10 @@ def mkphase2dir(subid, scan):
         rawscan = 'ses-localizer'
 
     # doing soft link
-    softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks)
+    _softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks)
 
 
-def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
+def _softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
     """
     Make soft link of every chosen file in phase2 from studyforrest/rawdata/ to studyforrest/.
 
@@ -84,7 +84,7 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
         tasks: the task list that could specify files under scan.
     """
     for task in tasks:
-        rawmodalitys, newfilenames = split_task(task)  # split task to get more info.
+        rawmodalitys, newfilenames = _split_phase2_task(task)  # split task to get more info.
 
         if not rawmodalitys or not newfilenames:
             raise ValueError("Please check input task name.")
@@ -95,7 +95,7 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
         for rawmodality, newfilename in zip(rawmodalitys, newfilenames):
             """soft link each rawmodality file into newfilename."""
 
-            # Get runid from files.
+            # Get runid from filename.
             files = os.listdir(srcdir)
             rawrunids = re.search('_run-[0-9]_{0}'.format(rawmodality), files).group()
             rawrunidlist = re.search('[0-9]', rawrunids).group()
@@ -106,6 +106,43 @@ def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, ta
                 src = os.path.join(srcdir, rawfilename)
                 dst = os.path.join(dstdir, newrunid, newfilename)
                 os.symlink(src, dst)
+
+
+def _split_phase2_task(task):
+    """
+    Get raw modalitys and the corresponding newfilename by the raw task.
+    If task is not specified, return None.
+
+    Parameters
+    ----------
+        task: task name of raw data, should be one of
+                ['movie', 'objectcategories', 'retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']
+
+    Return
+    ------
+        rawmodalitys: unified post part of raw data filename.
+        newfilenames: new filename of dst file.
+    """
+    rawmodalitys = None
+    newfilenames = None
+
+    if task == 'movie':
+        rawmodalitys = ['bold.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'recording-eyegaze_physio.tsv.gz']
+        newfilenames = ['raw.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'eyegaze_physio.tsv.gz']
+
+    if task == 'objectcategories':
+        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz', 'events.tsv']
+        newfilenames = [task + '_raw.nii.gz', task + '_cardresp_physio.tsv.gz', task + '_events.tsv']
+
+    if task == 'movielocalizer':
+        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
+        newfilenames = ['movieframe_raw.nii.gz', 'movieframe_cardresp_physio.tsv.gz']
+
+    if task in ['retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']:
+        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
+        newfilenames = [task + '_raw.nii.gz', task + '_recording-cardresp_physio.tsv.gz']
+
+    return rawmodalitys, newfilenames
 
 
 def mksubid(prefix, subid, idlength=2):
@@ -156,39 +193,4 @@ def mkrunid(runid, idlength=3):
     return runid_str
 
 
-def split_task(task):
-    """
-    Get raw modalitys and the corresponding newfilename by the raw task.
-    If task is not specified, return None.
-
-    Parameters
-    ----------
-        task: task name of raw data, should be one of
-                ['movie', 'objectcategories', 'retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']
-
-    Return
-    ------
-        rawmodalitys: unified post part of raw data filename.
-        newfilenames: new filename of dst file.
-    """
-    rawmodalitys = None
-    newfilenames = None
-
-    if task == 'movie':
-        rawmodalitys = ['bold.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'recording-eyegaze_physio.tsv.gz']
-        newfilenames = ['raw.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'eyegaze_physio.tsv.gz']
-
-    if task == 'objectcategories':
-        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz', 'events.tsv']
-        newfilenames = [task + '_raw.nii.gz', task + '_cardresp_physio.tsv.gz', task + '_events.tsv']
-
-    if task == 'movielocalizer':
-        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
-        newfilenames = ['movieframe_raw.nii.gz', 'movieframe_cardresp_physio.tsv.gz']
-
-    if task in ['retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']:
-        rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
-        newfilenames = [task + '_raw.nii.gz', task + '_recording-cardresp_physio.tsv.gz']
-
-    return rawmodalitys, newfilenames
 
