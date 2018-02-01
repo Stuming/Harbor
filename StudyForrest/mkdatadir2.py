@@ -52,31 +52,36 @@ def mkphase2dir(subid, scan):
 
 def softlinkphase2(rawrootdir, newrootdir, rawsubid, newsubid, rawscan, scan, tasks):
     for task in tasks:
-        if task in ['movie']:
+        rawmodalitys = None
+        newfilenames = None
+        
+        if task == 'movie':
             rawmodalitys = ['bold.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'recording-eyegaze_physio.tsv.gz']
-            newfilename = ['raw.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'eyegaze_physio.tsv.gz']
+            newfilenames = ['raw.nii.gz', 'events.tsv', 'eyelinkraw.asc.gz', 'eyegaze_physio.tsv.gz']
 
         if task == 'objectcategories':
             rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz', 'events.tsv']
-            newfilename = [task+'_raw.nii.gz', task+'_cardresp_physio.tsv.gz', task+'_events.tsv']
+            newfilenames = [task+'_raw.nii.gz', task+'_cardresp_physio.tsv.gz', task+'_events.tsv']
 
         if task == 'movielocalizer':
             rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
-            newfilename = ['movieframe_raw.nii.gz', 'movieframe_cardresp_physio.tsv.gz']
+            newfilenames = ['movieframe_raw.nii.gz', 'movieframe_cardresp_physio.tsv.gz']
 
         if task in ['retmapccw', 'retmapclw', 'retmapcon', 'retmapexp']:
             rawmodalitys = ['bold.nii.gz', 'recording-cardresp_physio.tsv.gz']
-            newfilename = [task+'_raw.nii.gz', task+'_recording-cardresp_physio.tsv.gz']
+            newfilenames = [task+'_raw.nii.gz', task+'_recording-cardresp_physio.tsv.gz']
+
+        if not rawmodalitys or not newfilenames:
+            raise ValueError("Please check input task name.")
 
         srcdir = os.path.join(rawrootdir, 'phase2', rawsubid, rawscan, 'func')
         dstdir = os.path.join(newrootdir, newsubid, scan)
 
-        rawfilename = rawsubid + '_' + rawscan + '_task-' + task + '_run-' + runid + '_' + rawmodality
-        newfilename = modality
-
-        src = mksrcpath(rawrootdir, rawdataname, rawsubid, rawfsub, rawtask, rawrunid, modality)
-        dst = mkdstpath(newrootdir, checksubid(rawsubid), newfsub, newtask, checkrunid(rawrunid), modality)
-
+        for rawmodality, newfilename in zip(rawmodalitys, newfilenames):
+            rawfilename = rawsubid + '_' + rawscan + '_task-' + task + '_run-' + runid + '_' + rawmodality
+            src = os.path.join(srcdir, rawfilename)
+            dst = os.path.join(dstdir, newfilename)
+            os.symlink(src, dst)
 
 def mksubid(prefix, subid):
     """
@@ -96,61 +101,6 @@ def mksubid(prefix, subid):
     while len(subnum) < 2:
         subnum = '0' + subnum
     return prefix + subnum
-
-
-# TODO to be modified
-
-def mksrcfilename_phase2(subid, fsub, task, runid, modality):
-    """
-        sub-01_ses-localizer_task-movielocalizer_run-1_bold.nii.gz
-        sub-01_ses-movie_task-movie_run-1_bold.nii.gz
-    >>shared format:
-        subid+task+'_task-'+modality+'_run-'+runid+'_'+datatype
-    """
-    filename = subid + '_' + fsub + '_task-' + task + '_run-' + runid + '_' + modality
-    return filename
-
-
-def mkdstfilename_phase2(task, modality):
-    if modality == 'bold.nii.gz':
-        modality = 'raw.nii.gz'
-    if task:  # localizer has multi tasks
-        filename = task + '_' + modality
-    else:  # movie has one task
-        filename = modality
-    return filename
-
-
-def mksrcpath(rootdir, dataname, subid, fsub, task, runid, modality):
-    """
-    make source path of raw data.
-    """
-    if dataname == 'phase2':
-        filename = mksrcfilename_phase2(subid, fsub, task, runid, modality)
-        fsub = fsub + '/func'
-    else: 
-        filename = modality  # struct
-    srcpath = os.path.join(rootdir, dataname, subid, fsub, filename)
-    return srcpath
-
-
-def mkdstpath(rootdir, subid, fsub, task, runid, modality):
-    """
-    make target path of soft link.
-    """
-    if modality in ['highres001.nii.gz', 't2w001.nii.gz', 'dti001.nii.gz', 'swi001_mag.nii.gz', 'swi001_pha.nii.gz', 'angio001.nii.gz']:  # struct
-        modality_dict = {'highres001.nii.gz': 't1w.nii.gz', 't2w001.nii.gz': 't2w.nii.gz', 'dti001.nii.gz': 'dti.nii.gz', 'swi001_mag.nii.gz': 'swi_mag.nii.gz', 'swi001_pha.nii.gz': 'swi_pha.nii.gz', 'angio001.nii.gz': 'angio.nii.gz'}
-        filename = modality_dict[modality]
-    else:  # phase2
-        filename = mkdstfilename_phase2(task, modality)
-    dstpath = os.path.join(rootdir, subid, fsub, runid, filename)
-    return dstpath
-
-
-def softlinkstruct(rawrootdir, rawdataname, rawsubid, rawfsub, modality, newrootdir, newfsub):
-    src = mksrcpath(rawrootdir, rawdataname, rawsubid, rawfsub, '', '', modality)
-    dst = mkdstpath(newrootdir, checksubid(rawsubid), newfsub, '', '', modality)
-    os.symlink(src, dst)
 
 
 if __name__ == '__main__':
