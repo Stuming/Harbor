@@ -19,7 +19,7 @@ class ShixisengCollect:
             username: 账号
             password: 密码
         """
-        self.login_info = {'username': username, 'password': password}
+        self.login_info = {'username': username, 'password': self._myencode(password)}
         
         self.main_url = 'https://www.shixiseng.com'
         self.login_url = '{0}/user/login'.format(self.main_url)
@@ -131,7 +131,15 @@ class ShixisengCollect:
         for key, value in chr_reflection.items():
             replace_string = re.sub(key, str(value), replace_string)
         return replace_string
-
+    
+    @staticmethod
+    def _myencode(source):
+        string = []
+        for i in source:
+            string.append(str(ord(i))[::-1])
+        encode_string = 'X'.join(reversed(string))
+        return encode_string
+    
     def save(self, savepath):
         try:
             import xlwt
@@ -159,8 +167,8 @@ class ShixisengCollect:
             sheet.write(i, j + 12, intern['deadline'])
         print('Saving to {}'.format(savepath))
         book.save(savepath)
-        
-        
+
+
 if __name__ == '__main__':
     username = 'yourusername'
     password = 'yourpassword'
