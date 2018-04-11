@@ -29,21 +29,21 @@ class ShixisengCollect:
             self.savepath = os.path.join(os.getcwd(), 'my_intern_collect.xls')
             
         # 初始化intern_list，用作表头
-        intern = dict()
-        intern['job_name'] = '工作名称'
-        intern['refresh_time'] = '刷新时间'
-        intern['money'] = '工资'
-        intern['city'] = '城市'
-        intern['academic'] = '学历'
-        intern['week'] = '实习天数'
-        intern['month'] = '实习月份'
-        intern['good'] = '职位诱惑'
-        intern['detail'] = '具体要求'
-        intern['com_name'] = '公司名称'
-        intern['com_position'] = '公司地点'
-        intern['deadline'] = '应聘截止日期'
+        intern = []
+        intern.append('工作名称')
+        intern.append('刷新时间')
+        intern.append('工资')
+        intern.append('城市')
+        intern.append('学历')
+        intern.append('实习天数')
+        intern.append('实习月份')
+        intern.append('职位诱惑')
+        intern.append('具体要求')
+        intern.append('公司名称')
+        intern.append('公司地点')
+        intern.append('应聘截止日期')
+        intern.append('网址')
         self.intern_list = [intern]
-        
     
     def run(self):
         self.login()
@@ -96,26 +96,27 @@ class ShixisengCollect:
     
     def link_parse(self, response):
         """爬取职位页面的具体信息。"""
-        intern = dict()
         soup = BeautifulSoup(response.content, 'lxml')
         
-        intern['job_name'] = soup.body.div.find(class_='new_job_name')['title']
+        intern = []
+        intern.append(soup.body.div.find(class_='new_job_name')['title'])
         refresh_time = soup.body.div.find(class_='job_date').get_text()
-        intern['refresh_time'] = self._ncr_to_int(refresh_time)
+        intern.append(self._ncr_to_int(refresh_time))
         money = soup.body.div.find(class_='job_msg').find(class_='job_money').get_text()
-        intern['money'] = self._ncr_to_int(money)
-        intern['city'] = soup.body.div.find(class_='job_msg').find(class_='job_position').get_text()
-        intern['academic'] = soup.body.div.find(class_='job_msg').find(class_='job_academic').get_text()
+        intern.append(self._ncr_to_int(money))
+        intern.append(soup.body.div.find(class_='job_msg').find(class_='job_position').get_text())
+        intern.append(soup.body.div.find(class_='job_msg').find(class_='job_academic').get_text())
         week = soup.body.div.find(class_='job_msg').find(class_='job_week').get_text()
-        intern['week'] = self._ncr_to_int(week)
+        intern.append(self._ncr_to_int(week))
         month = soup.body.div.find(class_='job_msg').find(class_='job_time').get_text()
-        intern['month'] = self._ncr_to_int(month)
-        intern['good'] = soup.body.div.find(class_='job_good').get_text()
-        intern['detail'] = soup.body.div.find(class_='job_detail').get_text()
-        intern['com_name'] = soup.body.div.find(class_='job_com_name').get_text()
-        intern['com_position'] = soup.body.div.find(class_='com_position').get_text()
+        intern.append(self._ncr_to_int(month))
+        intern.append(soup.body.div.find(class_='job_good').get_text())
+        intern.append(soup.body.div.find(class_='job_detail').get_text())
+        intern.append(soup.body.div.find(class_='job_com_name').get_text())
+        intern.append(soup.body.div.find(class_='com_position').get_text())
         deadline = soup.body.div.find(class_='con-job deadline').find(class_='job_detail').get_text()
-        intern['deadline'] = self._ncr_to_int(deadline)
+        intern.append(self._ncr_to_int(deadline))
+        intern.append(response.url)
         
         return intern
 
@@ -141,30 +142,50 @@ class ShixisengCollect:
         return encode_string
     
     def save(self, savepath):
-        try:
-            import xlwt
-        except ImportError:
-            raise ImportError('Install xlwt package for saving')
+        postfix = os.path.splitext(savepath)[1]
         
-        book = xlwt.Workbook()
-        sheet = book.add_sheet('sheet')
+        if postfix == '.xls':
+            try:
+                import xlwt
+            except ImportError:
+                raise ImportError('Install xlwt package for saving *{} file.'.format(postfix))
+            book = xlwt.Workbook()
+            book.encoding = 'utf-8'
+            sheet = book.add_sheet('sheet1')
+            
+            j = 0
+            for i in range(1, len(self.intern_list) + 1):
+                intern = self.intern_list[i-1]
+                sheet.write(i, j, i)
+                sheet.write(i, j + 1, intern[0])
+                sheet.write(i, j + 2, intern[1])
+                sheet.write(i, j + 3, intern[2])
+                sheet.write(i, j + 4, intern[3])
+                sheet.write(i, j + 5, intern[4])
+                sheet.write(i, j + 6, intern[5])
+                sheet.write(i, j + 7, intern[6])
+                sheet.write(i, j + 8, intern[7])
+                sheet.write(i, j + 9, intern[8])
+                sheet.write(i, j + 10, intern[9])
+                sheet.write(i, j + 11, intern[10])
+                sheet.write(i, j + 12, intern[11])
         
-        j = 0
-        for i in range(1, len(self.intern_list) + 1):
-            intern = self.intern_list[i-1]
-            sheet.write(i, j, i)
-            sheet.write(i, j + 1, intern['job_name'])
-            sheet.write(i, j + 2, intern['refresh_time'])
-            sheet.write(i, j + 3, intern['money'])
-            sheet.write(i, j + 4, intern['city'])
-            sheet.write(i, j + 5, intern['academic'])
-            sheet.write(i, j + 6, intern['week'])
-            sheet.write(i, j + 7, intern['month'])
-            sheet.write(i, j + 8, intern['good'])
-            sheet.write(i, j + 9, intern['detail'])
-            sheet.write(i, j + 10, intern['com_name'])
-            sheet.write(i, j + 11, intern['com_position'])
-            sheet.write(i, j + 12, intern['deadline'])
+        elif postfix in ['.xlsx', '.xlsm']:
+            try:
+                import openpyxl
+            except ImportError:
+                raise ImportError('Install openpyxl package for saving *{} file.'.format(postfix))
+            book = openpyxl.Workbook()
+            book.encoding = 'utf-8'
+            sheet = book.active
+            
+            for i in range(1, len(self.intern_list) + 1):
+                intern = [i] + self.intern_list[i-1]
+                sheet.append(intern)
+        
+        else:
+            raise ValueError('File format is not supported.')
+            
         print('Saving to {}'.format(savepath))
         book.save(savepath)
 
