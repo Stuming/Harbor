@@ -12,7 +12,7 @@ Usage:
     >>># python image_resize_batch.py dirpath width height
     >>>python image_resize_batch.py ./ 700 0
 
-@author: Administrator
+@author: Stuming
 """
 import os
 import sys
@@ -52,7 +52,8 @@ def image_resize(imgpath, *args):
 def find_imgfiles(dirpath):
     """Find all image files under dirpath."""
     files = os.listdir(dirpath)
-    imgfiles = [os.path.join(dirpath, file) for file in files if file.endswith('.jpg')]
+    imgformat = ('.jpg', '.png', '.jpeg')
+    imgfiles = [os.path.join(dirpath, file) for file in files if file.endswith(imgformat)]
     print('Finding images: ')
     print('\n'.join(imgfiles))
     print('--' * 10)
