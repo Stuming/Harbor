@@ -2,7 +2,7 @@
 """
 Created on Sun Feb 25 21:42:35 2018
 
-Get background image of http://cn.bing.com and save it.
+Get background image of https://cn.bing.com and save it.
 """
 import os
 import re
@@ -27,10 +27,13 @@ def getImgaddr(url, content):
 def saveimg(imgurl, imgpath):
     with open(imgpath, 'wb') as f:
         f.write(requests.get(imgurl).content)
+    print('Saving to: {}'.format(imgpath))
 
 
-def savebingimg(savedir):
-    url = 'http://cn.bing.com'
+def savebingimg(savedir=None):
+    if savedir is None:
+        savedir = os.getcwd()
+    url = 'https://cn.bing.com'
     imgurl = getImgaddr(url, getHTMLtext(url))
     print('The url of bing background image is: \n{0}'.format(imgurl))
     imgpath = os.path.join(savedir, imgurl.split('/')[-1])
@@ -38,5 +41,4 @@ def savebingimg(savedir):
     
     
 if __name__ == '__main__':
-    savedir = 'D:\\'
-    savebingimg(savedir)
+    savebingimg()
