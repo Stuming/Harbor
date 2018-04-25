@@ -36,16 +36,17 @@ class BallGame:
                     if event.button == 1:
                         self.hold = True
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    self.hold == False
+                    self.hold = False
+                    
                 elif event.type == pygame.MOUSEMOTION:
                     if event.buttons[0] == 1:
-                        ballrect = self.ballrect.move(event.pos[0] - self.ballrect.left, event.pos[1] - self.ballrect.top)
-                        if ballrect.bottomright <= self.size:
-                            self.ballrect = ballrect
-                        elif ballrect.right > self.size[0] and ballrect.bottom <= self.size[1]:
-                            self.ballrect = self.ballrect.move(0, event.pos[1] - self.ballrect.top)
-                        elif ballrect.bottom > self.size[1] and ballrect.right <= self.size[0]:
-                            self.ballrect = self.ballrect.move(event.pos[0] - self.ballrect.left, 0)
+                        ballmove = [event.pos[0] - self.ballrect.centerx, event.pos[1] - self.ballrect.centery]
+                        ballrect = self.ballrect.move(ballmove)
+                        if ballrect.left < 0 or ballrect.right > self.size[0]:
+                            ballmove[0] = 0
+                        if ballrect.top < 0 or ballrect.bottom > self.size[1]:
+                            ballmove[1] = 0
+                        self.ballrect = self.ballrect.move(ballmove)
             self.refresh_screen()
 
     def kb_speed_control(self, event):

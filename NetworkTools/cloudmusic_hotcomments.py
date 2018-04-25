@@ -9,6 +9,7 @@ import requests
 
 
 def getcomments(music_id, offset=0, total='false', limit=100):
+    # Method learned from https://github.com/darknessomi/musicbox
     comment_url = 'http://music.163.com/api/v1/resource/comments/R_SO_4_{0}/?rid=R_SO_4_{0}&offset={1}&total={2}&limit={3}'.format(music_id, offset, total, limit)
     header = {
             'Accept': '*/*',
@@ -19,7 +20,7 @@ def getcomments(music_id, offset=0, total='false', limit=100):
             'Host': 'music.163.com',
             'Referer': 'http://music.163.com/search/',
             'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36'  # NOQA
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
             }
     response = requests.get(url=comment_url, headers=header, timeout=5)
     response.raise_for_status()
