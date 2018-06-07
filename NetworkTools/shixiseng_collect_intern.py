@@ -1,33 +1,34 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
 """
 获取并保存实习僧网站(https://www.shixiseng.com)职位的信息。
 """
 import os
 import re
 import time
+import random
+
 import requests
 from bs4 import BeautifulSoup
 
-
-class ShixisengCollect:
-    def __init__(self, username, password, savepath=None):
+        
+class ShixisengIntern:
+    def __init__(self, savepath=None):
         """
-        初始化查询信息。
+        初始化。
         
         Parameters
         ----------
-            username: 账号
-            password: 密码
+        savepath: 保存路径
         """
-        self.login_info = {'username': username, 'password': self._myencode(password)}
-        
         self.main_url = 'https://www.shixiseng.com'
-        self.login_url = '{0}/user/login'.format(self.main_url)
-        self.collect_url = '{0}/my/collect'.format(self.main_url)
+        self.headers = {'User-Agent': 
+            'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Thunderbird/45.3.0'
+        }
+        
         self.savepath = savepath
         if not self.savepath:
             self.savepath = os.path.join(os.getcwd(), 'my_intern_collect.xls')
-            
+        
         # 初始化intern_list，用作表头
         intern = []
         intern.append('工作名称')
@@ -45,55 +46,91 @@ class ShixisengCollect:
         intern.append('网址')
         self.intern_list = [intern]
     
-    def run(self):
-        self.login()
-        collect_response = self.session.get(self.collect_url)
-        page_num = self.get_total_page_num(collect_response)
-        print('Total {} pages.'.format(page_num))
-        # 逐页处理
-        for i in range(1, page_num + 1):
-            page_url = '{0}?p={1}'.format(self.collect_url, i)
-            collect_response = self.session.get(page_url)
-            links = self.get_internlinks(collect_response)
-            for link in links:
-                time.sleep(0.5)  # 限制爬取速度，防止造成骚扰
-                
-                intern_url = self.main_url + link
-                print('Loading {}'.format(intern_url))
-                intern_response = self.session.get(intern_url)
-                intern = self.link_parse(intern_response)
-                self.intern_list.append(intern)
+    def get_jobs(self, job='数据', city='北京', pages=100, release_time='ft-wek'):
+        # ft-day, ft-wek, ft-mon
+        city_dict = {'北京': '110100'}
+        if release_time not in ['ft-day', 'ft-wek', 'ft-mon']:
+            raise ValueError('release_time should be one of ["ft-day", "ft-wek", "ft-mon"]')
+        
+        page = 1
+        url = '{url}/interns/st-intern_c-{c}_{r}?k={k}&p={p}'.format(
+                    url=self.main_url, r=release_time, c=city_dict[city], k=job, p=page)
+        response = requests.get(url, headers=self.headers)
+        
+        # 获得总页数
+        page_num = re.search(r'<a href=\".*?p=(.*?)\">尾页', response.text).group(1)
+        page_num = min(int(page_num), int(pages))
+        print('Download {} pages.'.format(page_num))
+        response.close()
+        
+        for page in range(1, page_num + 1):
+            url = '{url}/interns/st-intern_c-{c}_{r}?k={k}&p={p}'.format(
+                    url=self.main_url, r=release_time, c=city_dict[city], k=job, p=page)
+            response = requests.get(url, headers=self.headers)
+            links = self.get_internlinks(response, 'jobs')
+            self.links_parse(links)
+            response.close()
         self.save(self.savepath)
+                
+    def get_collect(self, username, password):
+        self.login(username, password)
         
-    def login(self):
+        collect_url = '{0}/my/collect'.format(self.main_url)
+        response = self.session.get(collect_url, headers=self.headers)
+        
+        # 获得总页数
+        page_num = re.search(r'<a title="第1页 / 共(\d+)页" >1</a>', response.text).group(1)
+        print('Download {} pages.'.format(page_num))
+        response.close()
+        
+        # 逐页处理
+        for i in range(1, int(page_num) + 1):
+            page_url = '{0}?p={1}'.format(collect_url, i)
+            response = self.session.get(page_url)
+            links = self.get_internlinks(response, 'collect')
+            self.links_parse(links)
+            response.close()
+        self.save(self.savepath)
+        self.session.close()
+        
+    def login(self, username, password):
+        login_info = {'username': username, 'password': self._myencode(password)}
+        login_url = '{0}/user/login'.format(self.main_url)
+        
         self.session = requests.Session()
-        self.session.post(self.login_url, self.login_info)
+        self.session.post(login_url, login_info)
     
-    def get_total_page_num(self, response):
-        """
-        获取收藏页面的总页数。
-        
-        Return
-        ------
-            page_num: type: int
-        """
-        # 通过页面获取收藏总页数
-        pattern = r'<a title="第1页 / 共(\d+)页" >1</a>'
-        page_num = re.search(pattern, response.text).group(1)
-        return int(page_num)
-            
-    def get_internlinks(self, response):
-        """获取收藏页的实习职位的url."""
+    def get_internlinks(self, response, page_type):
         soup = BeautifulSoup(response.content, 'lxml')
-        right_box = soup.body.div.find(class_='right-box')
-        intern_list = right_box.div.find_all(class_='intern-name')
-        
+        if page_type == 'jobs':
+            job_list = soup.body.find(class_='position-list')
+            intern_list = job_list.find_all(class_='name-box clearfix')
+        elif page_type == 'collect':
+            right_box = soup.body.div.find(class_='right-box')
+            intern_list = right_box.div.find_all(class_='intern-name')
+            
         link_list = []
-        for intern in intern_list:
-            intern_link = intern.a['href']
-            link_list.append(intern_link)
+        for job in intern_list:
+            job_link = job.a['href']
+            link_list.append(job_link)
         return link_list
     
+    def links_parse(self, links):
+        for link in links:
+            # 限制爬取速度，防止造成骚扰/被封
+            wait_time = random.randint(0, 5) + random.random()
+            time.sleep(wait_time)
+            
+            intern_url = self.main_url + link
+            print('{}'.format(intern_url))
+            intern_response = requests.get(intern_url)
+            try:
+                intern = self.link_parse(intern_response)
+            except Exception:
+                print('Error occures, skip this page.')
+            intern_response.close()
+            self.intern_list.append(intern)
+        
     def link_parse(self, response):
         """爬取职位页面的具体信息。"""
         soup = BeautifulSoup(response.content, 'lxml')
@@ -123,11 +160,20 @@ class ShixisengCollect:
     @staticmethod
     def _ncr_to_int(string):
         """
-        网页上一些数字是Numeric character reference形式，存储时显示异常，所以替换为int数字便于保存查看。
+        网页上一些数字经过字体加密，存储时显示异常，所以替换为数字便于保存查看。
         """
-        chr_reflection = {'\uf770': 0, '\uf5fa': 1, '\uf451': 2, '\ue939': 3, 
-                      '\uede7': 4, '\uf328': 5, '\ued99': 6, '\uf03b': 7, 
-                      '\ue9d2': 8, '\uf5e2': 9}
+        chr_reflection = {
+                '\uf423': '2', 
+                '\uf59f': '0', 
+                '\ueeca': '1', 
+                '\uf5f2': '8', 
+                '\ue8d5': '6', 
+                '\ue6ba': '5', 
+                '\ue8cc': '3', 
+                '\ue365': '7', 
+                '\ued9d': '9', 
+                '\uf168': '4', 
+                }
         replace_string = string
         for key, value in chr_reflection.items():
             replace_string = re.sub(key, str(value), replace_string)
@@ -189,11 +235,20 @@ class ShixisengCollect:
         print('Saving to {}'.format(savepath))
         book.save(savepath)
 
-
-if __name__ == '__main__':
-    username = 'yourusername'
-    password = 'yourpassword'
-    savepath = 'E:\\my_intern_collect.xls'
-    mycollect = ShixisengCollect(username, password, savepath)
-    mycollect.run()
     
+if __name__ == '__main__':
+    savedir=os.getcwd()
+    savename='intern_info.xls'
+    savepath = os.path.join(savedir, savename)
+
+    mycollect = ShixisengIntern(savepath)
+    
+    # 爬取职位信息
+    mycollect.get_jobs(job='数据分析', city='北京', pages=20)
+    
+    # 爬取收藏职位信息
+    """
+    username = 'youraccount'
+    password = 'youraccount'
+    mycollect.get_collect(username, password)
+    """
