@@ -6,9 +6,12 @@ import os
 import re
 import time
 import random
+from urllib.request import urlopen
 
 import requests
+import numpy as np
 from bs4 import BeautifulSoup
+from fontTools.ttLib import TTFont
 
         
 class ShixisengIntern:
@@ -21,6 +24,8 @@ class ShixisengIntern:
         savepath: 保存路径
         """
         self.main_url = 'https://www.shixiseng.com'
+        self.number_map = None
+
         self.headers = {'User-Agent': 
             'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Thunderbird/45.3.0'
         }
@@ -118,7 +123,7 @@ class ShixisengIntern:
     def links_parse(self, links):
         for link in links:
             # 限制爬取速度，防止造成骚扰/被封
-            wait_time = random.randint(0, 5) + random.random()
+            wait_time = 2 * np.random.random()
             time.sleep(wait_time)
             
             intern_url = self.main_url + link
@@ -133,51 +138,59 @@ class ShixisengIntern:
         
     def link_parse(self, response):
         """爬取职位页面的具体信息。"""
+        self.number_map = self.get_number_map(response)
+        
         soup = BeautifulSoup(response.content, 'lxml')
         
         intern = []
         intern.append(soup.body.div.find(class_='new_job_name')['title'])
         refresh_time = soup.body.div.find(class_='job_date').get_text()
-        intern.append(self._ncr_to_int(refresh_time))
+        intern.append(self.translate(refresh_time))
         money = soup.body.div.find(class_='job_msg').find(class_='job_money').get_text()
-        intern.append(self._ncr_to_int(money))
+        intern.append(self.translate(money))
         intern.append(soup.body.div.find(class_='job_msg').find(class_='job_position').get_text())
         intern.append(soup.body.div.find(class_='job_msg').find(class_='job_academic').get_text())
         week = soup.body.div.find(class_='job_msg').find(class_='job_week').get_text()
-        intern.append(self._ncr_to_int(week))
+        intern.append(self.translate(week))
         month = soup.body.div.find(class_='job_msg').find(class_='job_time').get_text()
-        intern.append(self._ncr_to_int(month))
+        intern.append(self.translate(month))
         intern.append(soup.body.div.find(class_='job_good').get_text())
         intern.append(soup.body.div.find(class_='job_detail').get_text())
         intern.append(soup.body.div.find(class_='job_com_name').get_text())
         intern.append(soup.body.div.find(class_='com_position').get_text())
         deadline = soup.body.div.find(class_='con-job deadline').find(class_='job_detail').get_text()
-        intern.append(self._ncr_to_int(deadline))
+        intern.append(self.translate(deadline))
         intern.append(response.url)
-        
         return intern
 
-    @staticmethod
-    def _ncr_to_int(string):
+    def translate(self, string):
         """
-        网页上一些数字经过字体加密，存储时显示异常，所以替换为数字便于保存查看。
+        网页上职位的数字是unicode通过自定义字体显示为数字，直接存储会无法显示。
         """
-        chr_reflection = {
-                '\uf423': '2', 
-                '\uf59f': '0', 
-                '\ueeca': '1', 
-                '\uf5f2': '8', 
-                '\ue8d5': '6', 
-                '\ue6ba': '5', 
-                '\ue8cc': '3', 
-                '\ue365': '7', 
-                '\ued9d': '9', 
-                '\uf168': '4', 
-                }
+        if not self.number_map:
+            raise ValueError('number map is not exist.')
+        
         replace_string = string
-        for key, value in chr_reflection.items():
+        for key, value in self.number_map.items():
             replace_string = re.sub(key, str(value), replace_string)
         return replace_string
+    
+    def get_number_map(self, response):
+        """
+        通过字体文件获取数字的映射关系。
+        """
+        pattern = re.compile('@font-face \{font-family\:myFont; src\: url\(\"(.+?)\"\)\}')
+        fontpath = re.search(pattern, response.text)[1]
+        
+        # 判断字体文件是否已获得
+        # if hashlib.md5(fontpath) == self.font_md5:
+        # return self.number_map
+        
+        font = TTFont(urlopen(fontpath))
+        font_map = font.getBestCmap()
+        glyph_order = font.getGlyphOrder()[2:12]
+        number_map = {chr(k): v[-1]  for k, v in font_map.items() if v in glyph_order}
+        return number_map
     
     @staticmethod
     def _myencode(source):
@@ -244,7 +257,7 @@ if __name__ == '__main__':
     mycollect = ShixisengIntern(savepath)
     
     # 爬取职位信息
-    mycollect.get_jobs(job='数据分析', city='北京', pages=20)
+    mycollect.get_jobs(job='数据分析', city='北京', pages=1)
     
     # 爬取收藏职位信息
     """
@@ -252,3 +265,4 @@ if __name__ == '__main__':
     password = 'youraccount'
     mycollect.get_collect(username, password)
     """
+    
