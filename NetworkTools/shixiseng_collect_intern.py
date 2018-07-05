@@ -5,7 +5,6 @@
 import os
 import re
 import time
-import random
 from urllib.request import urlopen
 
 import requests
