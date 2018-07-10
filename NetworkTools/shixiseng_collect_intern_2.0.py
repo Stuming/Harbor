@@ -16,13 +16,12 @@ from fontTools.ttLib import TTFont
 
         
 class ShixisengIntern:
-    def __init__(self, savepath=None):
+    def __init__(self):
         """
         初始化。
         
-        Parameters
-        ----------
-        savepath: 保存路径
+        职位信息查询：get_jobs()
+        收藏夹内容抓取：get_collect()
         """
         self.main_url = 'https://www.shixiseng.com'
         self.number_map = None
@@ -30,10 +29,6 @@ class ShixisengIntern:
         self.headers = {'User-Agent': 
             'Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Thunderbird/45.3.0'
         }
-        
-        self.savepath = savepath
-        if not self.savepath:
-            self.savepath = os.path.join(os.getcwd(), 'my_intern_collect.xls')
         
         # 初始化data frame
         columns = ['工作名称', '刷新时间', '工资', '城市', '学历', 
@@ -56,7 +51,7 @@ class ShixisengIntern:
                         'ft-mon': 一月内
         """
         # ft-day, ft-wek, ft-mon
-        city_code = self.get_city_code(city)
+        city_code = self._get_city_code(city)
         
         if release_time not in ['ft-day', 'ft-wek', 'ft-mon']:
             raise ValueError('release_time 应为 ["ft-day", "ft-wek", "ft-mon"] 之一')
@@ -69,19 +64,19 @@ class ShixisengIntern:
         # 获得总页数
         page_num = re.search(r'<a href=\".*?p=(.*?)\">尾页', response.text).group(1)
         page_num = min(int(page_num), int(pages))
-        print('Download {} pages.'.format(page_num))
+        print(f'预计下载 {page_num} 页')
         response.close()
         
+        # 逐页处理
         for page in range(1, page_num + 1):
             url = '{url}/interns/st-intern_c-{c}_{r}?k={k}&p={p}'.format(
                     url=self.main_url, r=release_time, c=city_code, k=job, p=page)
             response = requests.get(url, headers=self.headers)
-            links = self.get_internlinks(response, 'jobs')
-            self.links_parse(links)
+            links = self._get_internlinks(response, 'jobs')
+            self._links_parse(links)
             response.close()
-        self.save(self.savepath)
     
-    def get_city_code(self, city):
+    def _get_city_code(self, city):
         """通过页面获取城市代码"""
         if city == '全国':
             return 'None'
@@ -104,7 +99,7 @@ class ShixisengIntern:
         ----------
         username: 用户名，用于模拟登陆。
         password: 密码，用于模拟登陆。"""
-        self.login(username, password)
+        self._login(username, password)
         
         collect_url = '{0}/my/collect'.format(self.main_url)
         response = self.session.get(collect_url, headers=self.headers)
@@ -118,13 +113,12 @@ class ShixisengIntern:
         for i in range(1, int(page_num) + 1):
             page_url = '{0}?p={1}'.format(collect_url, i)
             response = self.session.get(page_url)
-            links = self.get_internlinks(response, 'collect')
-            self.links_parse(links)
+            links = self._get_internlinks(response, 'collect')
+            self._links_parse(links)
             response.close()
-        self.save(self.savepath)
         self.session.close()
         
-    def login(self, username, password):
+    def _login(self, username, password):
         """模拟登陆"""
         login_info = {'username': username, 'password': self._myencode(password)}
         login_url = '{0}/user/login'.format(self.main_url)
@@ -132,7 +126,7 @@ class ShixisengIntern:
         self.session = requests.Session()
         self.session.post(login_url, login_info)
     
-    def get_internlinks(self, response, page_type):
+    def _get_internlinks(self, response, page_type):
         soup = BeautifulSoup(response.content, 'lxml')
         if page_type == 'jobs':
             job_list = soup.body.find(class_='position-list')
@@ -147,7 +141,7 @@ class ShixisengIntern:
             link_list.append(job_link)
         return link_list
     
-    def links_parse(self, links):
+    def _links_parse(self, links):
         """逐一解析职位信息页面，提取所需信息"""
         for link in links:
             # 限制爬取速度，防止造成骚扰/被封
@@ -158,40 +152,40 @@ class ShixisengIntern:
             print(f'解析页面：{intern_url}')
             intern_response = requests.get(intern_url)
             try:
-                intern = self.link_parse(intern_response)
+                intern = self._link_parse(intern_response)
             except Exception:
                 print('解析失败，跳过此页')
             intern_response.close()
             self.df = self.df.append(pd.DataFrame([intern], columns=self.df.columns), ignore_index=True)
         
-    def link_parse(self, response):
+    def _link_parse(self, response):
         """爬取职位页面的具体信息。"""
-        self.number_map = self.get_number_map(response)
+        self.number_map = self._get_number_map(response)
         
         soup = BeautifulSoup(response.content, 'lxml')
         
         intern = []
         intern.append(soup.body.div.find(class_='new_job_name')['title'])
         refresh_time = soup.body.div.find(class_='job_date').get_text()
-        intern.append(self.translate(refresh_time))
+        intern.append(self._translate(refresh_time))
         money = soup.body.div.find(class_='job_msg').find(class_='job_money').get_text()
-        intern.append(self.translate(money))
+        intern.append(self._translate(money))
         intern.append(soup.body.div.find(class_='job_msg').find(class_='job_position').get_text())
         intern.append(soup.body.div.find(class_='job_msg').find(class_='job_academic').get_text())
         week = soup.body.div.find(class_='job_msg').find(class_='job_week').get_text()
-        intern.append(self.translate(week))
+        intern.append(self._translate(week))
         month = soup.body.div.find(class_='job_msg').find(class_='job_time').get_text()
-        intern.append(self.translate(month))
+        intern.append(self._translate(month))
         intern.append(soup.body.div.find(class_='job_good').get_text())
         intern.append(soup.body.div.find(class_='job_detail').get_text())
         intern.append(soup.body.div.find(class_='job_com_name').get_text())
         intern.append(soup.body.div.find(class_='com_position').get_text())
         deadline = soup.body.div.find(class_='con-job deadline').find(class_='job_detail').get_text()
-        intern.append(self.translate(deadline))
+        intern.append(self._translate(deadline))
         intern.append(response.url)
         return intern
 
-    def translate(self, string):
+    def _translate(self, string):
         """
         网页上职位的数字是unicode通过自定义字体显示为数字，直接存储会无法显示。
         """
@@ -205,7 +199,7 @@ class ShixisengIntern:
             replace_string = re.sub(key, str(value), replace_string)
         return replace_string
     
-    def get_number_map(self, response):
+    def _get_number_map(self, response):
         """
         通过字体文件获取数字的映射关系。
         """
@@ -245,17 +239,15 @@ class ShixisengIntern:
 
     
 if __name__ == '__main__':
-    savedir=os.getcwd()
-    savename='intern_info.xls'
-    savepath = os.path.join(savedir, savename)
-
-    mycollect = ShixisengIntern(savepath)
+    mycollect = ShixisengIntern()
     
     # 爬取职位信息
     job = '数据分析'
     city = '北京'
-    mycollect.get_jobs(job=job, city=city, pages=10)
-    mycollect.save(f'{job}_{city}_实习.xls')
+    mycollect.get_jobs(job=job, city=city, pages=3)
+    
+    savepath = os.path.join(os.getcwd(), f'{job}_{city}_实习.xls')
+    mycollect.save(savepath)
     
     # 爬取收藏职位信息
     """
