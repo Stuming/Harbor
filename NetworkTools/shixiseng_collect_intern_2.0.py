@@ -42,6 +42,19 @@ class ShixisengIntern:
         self.df = pd.DataFrame(None, columns=columns)
     
     def get_jobs(self, job='数据', city='北京', pages=100, release_time='ft-wek'):
+        """
+        爬取指定的job信息
+        
+        Parameters
+        ----------
+        job: 职位信息，搜索关键字
+        city: 所在城市，默认'北京'
+        pages: 设定爬取多少页信息，默认为100
+        release_time: 发布时间，默认为'ft-wek'，即获取一周内发布的职位，具体参数为：
+                        'ft-day': 一天内
+                        'ft-wek': 一周内
+                        'ft-mon': 一月内
+        """
         # ft-day, ft-wek, ft-mon
         city_dict = {'北京': '110100'}
         if release_time not in ['ft-day', 'ft-wek', 'ft-mon']:
@@ -68,6 +81,13 @@ class ShixisengIntern:
         self.save(self.savepath)
                 
     def get_collect(self, username, password):
+        """
+        爬取收藏夹中的职位信息
+        
+        Parameters
+        ----------
+        username: 用户名，用于模拟登陆。
+        password: 密码，用于模拟登陆。"""
         self.login(username, password)
         
         collect_url = '{0}/my/collect'.format(self.main_url)
@@ -89,6 +109,7 @@ class ShixisengIntern:
         self.session.close()
         
     def login(self, username, password):
+        """模拟登陆"""
         login_info = {'username': username, 'password': self._myencode(password)}
         login_url = '{0}/user/login'.format(self.main_url)
         
@@ -111,6 +132,7 @@ class ShixisengIntern:
         return link_list
     
     def links_parse(self, links):
+        """逐一解析职位信息页面，提取所需信息"""
         for link in links:
             # 限制爬取速度，防止造成骚扰/被封
             wait_time = 2 * np.random.random()
@@ -186,6 +208,7 @@ class ShixisengIntern:
     
     @staticmethod
     def _myencode(source):
+        """网站对密码进行了加密，需要进行相同操作才能提交"""
         string = []
         for i in source:
             string.append(str(ord(i))[::-1])
@@ -193,6 +216,7 @@ class ShixisengIntern:
         return encode_string
     
     def save(self, savepath):
+        """保存到文件"""
         postfix = os.path.splitext(savepath)[1]
         
         if postfix in ['.xls', '.xlsx', '.xlsm']:
