@@ -49,20 +49,21 @@ class ShixisengIntern:
         ----------
         job: 职位信息，搜索关键字
         city: 所在城市，默认'北京'
-        pages: 设定爬取多少页信息，默认为100
+        pages: 设定爬取多少页信息，默认为100，如果页面不足则以实际页面为准
         release_time: 发布时间，默认为'ft-wek'，即获取一周内发布的职位，具体参数为：
                         'ft-day': 一天内
                         'ft-wek': 一周内
                         'ft-mon': 一月内
         """
         # ft-day, ft-wek, ft-mon
-        city_dict = {'北京': '110100'}
+        city_code = self.get_city_code(city)
+        
         if release_time not in ['ft-day', 'ft-wek', 'ft-mon']:
-            raise ValueError('release_time should be one of ["ft-day", "ft-wek", "ft-mon"]')
+            raise ValueError('release_time 应为 ["ft-day", "ft-wek", "ft-mon"] 之一')
         
         page = 1
         url = '{url}/interns/st-intern_c-{c}_{r}?k={k}&p={p}'.format(
-                    url=self.main_url, r=release_time, c=city_dict[city], k=job, p=page)
+                    url=self.main_url, r=release_time, c=city_code, k=job, p=page)
         response = requests.get(url, headers=self.headers)
         
         # 获得总页数
@@ -73,13 +74,28 @@ class ShixisengIntern:
         
         for page in range(1, page_num + 1):
             url = '{url}/interns/st-intern_c-{c}_{r}?k={k}&p={p}'.format(
-                    url=self.main_url, r=release_time, c=city_dict[city], k=job, p=page)
+                    url=self.main_url, r=release_time, c=city_code, k=job, p=page)
             response = requests.get(url, headers=self.headers)
             links = self.get_internlinks(response, 'jobs')
             self.links_parse(links)
             response.close()
         self.save(self.savepath)
-                
+    
+    def get_city_code(self, city):
+        """通过页面获取城市代码"""
+        if city == '全国':
+            return 'None'
+        pattern = re.compile(f'data-val=(.+?) > {city} </li>')
+        response = requests.get(self.main_url)
+        text = response.text
+        response.close()
+        
+        try:
+            city_code = re.findall(pattern, text)
+        except IndexError:
+            raise ValueError('不支持查询该城市：{city}')
+        return city_code
+        
     def get_collect(self, username, password):
         """
         爬取收藏夹中的职位信息
@@ -95,7 +111,7 @@ class ShixisengIntern:
         
         # 获得总页数
         page_num = re.search(r'<a title="第1页 / 共(\d+)页" >1</a>', response.text).group(1)
-        print('Download {} pages.'.format(page_num))
+        print(f'预计下载 {page_num} 页')
         response.close()
         
         # 逐页处理
@@ -139,12 +155,12 @@ class ShixisengIntern:
             time.sleep(wait_time)
             
             intern_url = self.main_url + link
-            print('{}'.format(intern_url))
+            print(f'解析页面：{intern_url}')
             intern_response = requests.get(intern_url)
             try:
                 intern = self.link_parse(intern_response)
             except Exception:
-                print('Error occures, skip this page.')
+                print('解析失败，跳过此页')
             intern_response.close()
             self.df = self.df.append(pd.DataFrame([intern], columns=self.df.columns), ignore_index=True)
         
@@ -180,7 +196,7 @@ class ShixisengIntern:
         网页上职位的数字是unicode通过自定义字体显示为数字，直接存储会无法显示。
         """
         if not self.number_map:
-            raise ValueError('number map is not exist.')
+            raise ValueError('未能生成数字映射数据，请重试。')
         
         # TODO 字体查重
         
@@ -224,8 +240,8 @@ class ShixisengIntern:
         elif postfix in ['.csv']:
             self.df.to_csv(savepath)        
         else:
-            raise ValueError('File format {} is not supported.'.format(postfix))
-        print('Saving to {}'.format(savepath))
+            raise ValueError(f'文件格式{postfix}不支持。')
+        print(f'保存到路径：{savepath}')
 
     
 if __name__ == '__main__':
@@ -236,7 +252,10 @@ if __name__ == '__main__':
     mycollect = ShixisengIntern(savepath)
     
     # 爬取职位信息
-    mycollect.get_jobs(job='数据分析', city='北京', pages=1)
+    job = '数据分析'
+    city = '北京'
+    mycollect.get_jobs(job=job, city=city, pages=10)
+    mycollect.save(f'{job}_{city}_实习.xls')
     
     # 爬取收藏职位信息
     """
