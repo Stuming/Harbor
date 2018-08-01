@@ -86,7 +86,7 @@ class ShixisengIntern:
         response.close()
         
         try:
-            city_code = re.findall(pattern, text)
+            city_code = re.findall(pattern, text)[1]
         except IndexError:
             raise ValueError('不支持查询该城市：{city}')
         return city_code
