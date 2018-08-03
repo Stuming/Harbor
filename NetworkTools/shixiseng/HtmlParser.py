@@ -20,30 +20,22 @@ class HtmlParser(object):
         new_data = self._get_new_data(page_url, soup)
         return new_urls, new_data
     
-    def _get_new_urls(self, page_url, soup):
-        """Extract new urls from page_url."""
-        pass
-    
-    def _links_parse(self, links):
-        """逐一解析职位信息页面，提取所需信息"""
-        for link in links:
-            intern_url = self.main_url + link
-            print(f'解析页面：{intern_url}')
-            intern_response = requests.get(intern_url)
-            try:
-                intern = self._link_parse(intern_response)
-            except Exception:
-                print('解析失败，跳过此页')
-            intern_response.close()
-            self.df = self.df.append(pd.DataFrame([intern], columns=self.df.columns), ignore_index=True)
-    
     def get_collect_page_num(self, response):
         if response is None:
             return None
+        
         page_num = re.search(r'<a title="第1页 / 共(\d+)页" >1</a>', response.text).group(1)
         return page_num
-
-    def _get_internlinks(self, response, page_type):
+    
+    def get_intern_urls(self, response, page_type):
+        """
+        Get urls of interns from job list page or collect page.
+        
+        Parameters
+        ----------
+        response: response from requests.
+        page_type: clear the pattern of page, should be one of ['jobs', 'collect'].
+        """
         soup = BeautifulSoup(response.content, 'lxml')
         if page_type == 'jobs':
             job_list = soup.body.find(class_='position-list')
@@ -51,15 +43,17 @@ class HtmlParser(object):
         elif page_type == 'collect':
             right_box = soup.body.div.find(class_='right-box')
             intern_list = right_box.div.find_all(class_='intern-name')
-            
+        
         link_list = []
         for job in intern_list:
             job_link = job.a['href']
             link_list.append(job_link)
         return link_list
-
+    
     def parser_intern_info(self, response):
-        """爬取职位页面的具体信息。"""
+        """
+        Parse job infomation from intern page, and return a list that contain info of a job.
+        """
         self.number_map = self._get_number_map(response)
         
         soup = BeautifulSoup(response.content, 'lxml')

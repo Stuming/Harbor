@@ -8,8 +8,9 @@ class HtmlDownloader(object):
     def __init__(self):
         """Download html from url."""
         self.main_url = 'https://www.shixiseng.com'
+        self.session = None
     
-    def download(self, url, session=None):
+    def get(self, url, session=None):
         """Download and get text from url."""
         if url is None:
             return None
@@ -29,19 +30,6 @@ class HtmlDownloader(object):
             response.encoding = 'utf-8'
             return response
         return None
-    
-    def get_collect_links(self, session, page_num):
-        """
-        爬取收藏夹中的职位信息
-        """
-        collect_url = '{0}/my/collect'.format(self.main_url)
-        for i in range(1, int(page_num) + 1):
-            page_url = '{0}?p={1}'.format(collect_url, i)
-            response = session.get(page_url)
-            links = self._get_internlinks(response, 'collect')
-            self._links_parse(links)
-            response.close()
-        self.session.close()
     
     @staticmethod
     def get_random_UA():
@@ -64,7 +52,7 @@ class HtmlDownloader(object):
         
         session = requests.Session()
         session.post(login_url, login_info)
-        return session
+        self.session = session
     
     @staticmethod
     def _myencode(source):
