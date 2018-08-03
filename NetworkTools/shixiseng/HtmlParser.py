@@ -9,7 +9,8 @@ from fontTools.ttLib import TTFont
 class HtmlParser(object):
     def __init__(self):
         """Extract new urls and data from url."""
-        pass
+        self.number_map = None
+        self.font_hash = None
     
     def parser(self, page_url, html_cont):
         if page_url is None or html_cont is None:
@@ -23,7 +24,41 @@ class HtmlParser(object):
         """Extract new urls from page_url."""
         pass
     
-    def get_intern_info(self, response):
+    def _links_parse(self, links):
+        """逐一解析职位信息页面，提取所需信息"""
+        for link in links:
+            intern_url = self.main_url + link
+            print(f'解析页面：{intern_url}')
+            intern_response = requests.get(intern_url)
+            try:
+                intern = self._link_parse(intern_response)
+            except Exception:
+                print('解析失败，跳过此页')
+            intern_response.close()
+            self.df = self.df.append(pd.DataFrame([intern], columns=self.df.columns), ignore_index=True)
+    
+    def get_collect_page_num(self, response):
+        if response is None:
+            return None
+        page_num = re.search(r'<a title="第1页 / 共(\d+)页" >1</a>', response.text).group(1)
+        return page_num
+
+    def _get_internlinks(self, response, page_type):
+        soup = BeautifulSoup(response.content, 'lxml')
+        if page_type == 'jobs':
+            job_list = soup.body.find(class_='position-list')
+            intern_list = job_list.find_all(class_='name-box clearfix')
+        elif page_type == 'collect':
+            right_box = soup.body.div.find(class_='right-box')
+            intern_list = right_box.div.find_all(class_='intern-name')
+            
+        link_list = []
+        for job in intern_list:
+            job_link = job.a['href']
+            link_list.append(job_link)
+        return link_list
+
+    def parser_intern_info(self, response):
         """爬取职位页面的具体信息。"""
         self.number_map = self._get_number_map(response)
         
@@ -57,8 +92,6 @@ class HtmlParser(object):
         if not self.number_map:
             raise ValueError('未能生成数字映射数据，请重试。')
         
-        # TODO 字体查重
-        
         replace_string = string
         for key, value in self.number_map.items():
             replace_string = re.sub(key, str(value), replace_string)
@@ -72,11 +105,26 @@ class HtmlParser(object):
         fontpath = re.search(pattern, response.text)[1]
         
         # 判断字体文件是否已获得
-        # if hashlib.md5(fontpath) == self.font_md5:
-        # return self.number_map
+        if hash(fontpath) == self.font_hash:
+            return self.number_map
         
+        self.font_hash = hash(fontpath)
         font = TTFont(urlopen(fontpath))
         font_map = font.getBestCmap()
         glyph_order = font.getGlyphOrder()[2:12]
         number_map = {chr(k): v[-1]  for k, v in font_map.items() if v in glyph_order}
         return number_map
+    
+    def get_city_code(self, response, city):
+        """通过页面获取城市代码"""
+        if city == '全国':
+            return 'None'
+        pattern = re.compile(f'data-val=(.+?) > {city} </li>')
+        html_text = response.text
+        
+        try:
+            city_code = re.findall(pattern, html_text)[1]
+        except IndexError:
+            raise ValueError('不支持查询该城市：{city}')
+        return city_code
+    

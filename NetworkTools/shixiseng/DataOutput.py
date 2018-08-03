@@ -5,6 +5,11 @@ class DataOutput(object):
     def __init__(self):
         """Save data into file."""
         self.data = []
+            # 初始化data frame
+        columns = ['工作名称', '刷新时间', '工资', '城市', '学历', 
+                   '实习天数', '实习月份', '职位诱惑', '具体要求', 
+                   '公司名称', '公司地点', '应聘截止日期', '网址', ]
+    
     
     def store_data(self, data):
         if data is None:

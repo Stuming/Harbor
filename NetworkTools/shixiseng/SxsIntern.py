@@ -15,6 +15,12 @@ class SxsIntern(object):
         self.parser = HtmlParser()
         self.output = DataOutput()
     
+    def get_collect(self, username, password):
+        self._login(username, password)
+        
+        collect_url = '{0}/my/collect'.format(self.main_url)
+        response = self.session.get(collect_url, headers=self.headers)
+    
     def crawl(self, root_url, save_path=None, max_amount=100):
         self.manger.add_new_url(root_url)
         while(self.manger.has_new_url() and 
