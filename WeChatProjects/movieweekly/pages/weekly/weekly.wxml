@@ -1,0 +1,6 @@
+<view class='container'>
+  <text>本周推荐电影</text>
+  <image src='/images/movie1.jpg'></image>
+  <text>肖申克的救赎</text>
+  <text>此处为推荐理由</text>
+</view>

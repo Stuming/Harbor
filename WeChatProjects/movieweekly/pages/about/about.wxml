@@ -1,5 +1,8 @@
 <view class='container'>
-  <image src='/images/movie1.jpg'></image>
-  <text>Hello World!</text>
+  <image class='about-banner' src='/images/about1.jpg'></image>
+  <view>
+    <text style='font-weight: bold; font-size: 40rpx;'>每周</text>
+    <navigator url='/pages/weekly/weekly' open-type='switchTab' class='nav-style' hover-class='hover-style'>电影推荐</navigator>
+  </view>
   <text>By Stuming</text>
 </view>
