@@ -1,0 +1,11 @@
+{
+  "pages":[
+    "pages/about/about"
+  ],
+  "window":{
+    "backgroundTextStyle":"light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "MovieWeekly",
+    "navigationBarTextStyle":"black"
+  }
+}

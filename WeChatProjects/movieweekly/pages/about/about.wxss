@@ -1,0 +1,14 @@
+.container {
+  background-color: #eee;
+  height: 100%;
+
+  text-align: center
+}
+
+text {
+  display: block;
+}
+
+image, text {
+  margin-bottom: 30px
+}
